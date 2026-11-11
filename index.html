@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>围</title>
+<style>
+  body { background: #f3efe6; color: #333; font: 15px/1.7 -apple-system, "PingFang SC", "Hiragino Sans GB", sans-serif; margin: 0; padding: 18px; }
+  #wrap { max-width: 860px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 0 0 6px; font-weight: 600; }
+  .intro { color: #555; margin: 0 0 12px; }
+  canvas { display: block; max-width: 100%; height: auto; cursor: pointer; }
+  #bar { margin: 10px 0; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  button { font: inherit; padding: 5px 14px; border: 1px solid #888; background: #fff; border-radius: 4px; cursor: pointer; }
+  button:disabled { color: #aaa; border-color: #ccc; cursor: default; }
+  #pick { color: #444; min-width: 9em; }
+  #status { white-space: pre-wrap; margin: 6px 0; }
+  #log { white-space: pre-wrap; color: #444; border-left: 3px solid #ccc; padding-left: 10px; margin: 8px 0 16px; }
+  #log .k { color: #6a4a10; }
+  #end { white-space: pre-wrap; }
+  .cap { color: #666; font-size: 13px; margin-top: 4px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <h1>围</h1>
+  <p class="intro">这是一片荒原，过一百年。山顶那几丛是老松。你手里有一道围栏，围得住三十米见方一块，牛进不去。<br>
+  先在图上点一块地，再选蹲下去看，或者把围栏挪过去。每五年最多蹲三回。</p>
+  <canvas id="cv" width="830" height="540"></canvas>
+  <div class="cap">紫的是石南。白框是立着的围栏，淡框是拆了的。黄字是你蹲下去那年看见的数。</div>
+  <div id="bar">
+    <span id="pick">点一块地。</span>
+    <button id="kb" disabled>蹲下去看</button>
+    <button id="fb" disabled>把围栏挪到这儿</button>
+    <button id="ub">收起围栏</button>
+    <button id="pb">过五年</button>
+  </div>
+  <div id="status"></div>
+  <div id="log"></div>
+  <div id="end"></div>
+  <canvas id="cv0" width="830" height="540" style="display:none"></canvas>
+</div>
+<script src="core.js"></script>
+<script src="play.js"></script>
+<script>
+(function () {
+  const L = window.荒, G = window.围, S = 8, OX = 26, TOP = 50;
+  const $ = (id) => document.getElementById(id);
+  const qs = new URLSearchParams(location.search);
+  const seed = qs.get('seed') ? parseInt(qs.get('seed'), 10) : 7;
+  let game = null, sel = null;
+
+  function draw(cv, w, opts) {
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = '#f3efe6'; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.fillStyle = 'rgb(122,88,104)'; ctx.fillRect(OX, TOP, L.W * S, L.H * S);
+    let a = 12345;
+    const rnd = () => { a = (a * 1103515245 + 12345) % 2147483648; return a / 2147483648; };
+    ctx.fillStyle = 'rgb(140,100,120)';
+    for (let k = 0; k < 2500; k++) ctx.fillRect(OX + rnd() * L.W * S, TOP + rnd() * L.H * S, 1, 1);
+    ctx.strokeStyle = 'rgb(135,100,118)'; ctx.lineWidth = 1;
+    ctx.fillStyle = '#555'; ctx.font = '13px sans-serif';
+    for (let c = 0; c < L.W / G.BS; c++) {
+      for (let r = 0; r < L.H / G.BS; r++) ctx.strokeRect(OX + c * G.BS * S + .5, TOP + r * G.BS * S + .5, G.BS * S, G.BS * S);
+      ctx.fillText(G.COLS[c], OX + c * G.BS * S + G.BS * S / 2 - 4, TOP - 6);
+    }
+    for (let r = 0; r < L.H / G.BS; r++) ctx.fillText(String(r + 1), 8, TOP + r * G.BS * S + G.BS * S / 2 + 5);
+    for (const f of w.fences) {
+      if (f[4] > w.yr) continue;
+      const on = f[5] == null || w.yr < f[5];
+      ctx.strokeStyle = on ? 'rgb(240,235,210)' : 'rgb(165,135,145)'; ctx.lineWidth = on ? 3 : 1;
+      ctx.strokeRect(OX + f[0] * S, TOP + f[1] * S, (f[2] - f[0]) * S, (f[3] - f[1]) * S);
+    }
+    const ts = w.live().filter(t => t.h >= L.HEATHER + 0.1).sort((p, q) => p.h - q.h);
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgb(20,50,30)';
+    for (const t of ts) {
+      const rad = Math.max(1.5, Math.min(14, t.h * 1.1));
+      ctx.fillStyle = (opts.color && t.line === '围') ? 'rgb(205,125,40)' : (t.h > L.REACH ? 'rgb(40,90,50)' : 'rgb(90,125,75)');
+      ctx.beginPath(); ctx.arc(OX + t.x * S, TOP + t.y * S, rad, 0, 2 * Math.PI); ctx.fill(); ctx.stroke();
+    }
+    if (opts.seen) {
+      for (const k in opts.seen) {
+        const [c, r] = k.split(',').map(Number), v = opts.seen[k];
+        ctx.fillStyle = 'rgb(255,245,160)'; ctx.font = '13px sans-serif';
+        ctx.fillText(v.n + '棵', OX + c * G.BS * S + 4, TOP + r * G.BS * S + 15);
+        ctx.fillStyle = 'rgb(230,220,190)'; ctx.font = '11px sans-serif';
+        ctx.fillText((G.Y0 + v.yr - G.WARM) + '年', OX + c * G.BS * S + 4, TOP + r * G.BS * S + 29);
+      }
+    }
+    if (opts.sel) {
+      ctx.strokeStyle = 'rgb(255,230,0)'; ctx.lineWidth = 2;
+      ctx.strokeRect(OX + opts.sel[0] * G.BS * S + 1, TOP + opts.sel[1] * G.BS * S + 1, G.BS * S - 2, G.BS * S - 2);
+    }
+    ctx.fillStyle = '#333'; ctx.font = '16px sans-serif';
+    ctx.fillText(opts.title, OX + 4, 20);
+  }
+
+  function redraw() { draw($('cv'), game.w, { seen: game.seen, sel, title: game.year() + ' 年', color: false }); }
+  function log(lines, cls) {
+    const d = document.createElement('div'); if (cls) d.className = cls;
+    d.textContent = lines.join('\n'); $('log').prepend(d);
+  }
+  function buttons() {
+    const over = game.done;
+    $('kb').disabled = over || !sel || game.kn >= G.KNEEL;
+    $('fb').disabled = over || !sel;
+    $('ub').disabled = over || !game.fence();
+    $('pb').disabled = over;
+    $('pick').textContent = sel ? '选了 ' + G.name(sel[0], sel[1]) + '。' : '点一块地。';
+  }
+  function status() { $('status').textContent = game.head() + '\n' + game.left(); }
+
+  $('cv').addEventListener('click', (e) => {
+    if (!game || game.done) return;
+    const rc = $('cv').getBoundingClientRect(), k = $('cv').width / rc.width;
+    const x = (e.clientX - rc.left) * k - OX, y = (e.clientY - rc.top) * k - TOP;
+    if (x < 0 || y < 0 || x >= L.W * S || y >= L.H * S) return;
+    sel = [Math.floor(x / (G.BS * S)), Math.floor(y / (G.BS * S))];
+    redraw(); buttons();
+  });
+  $('kb').onclick = () => { log(game.kneel(sel[0], sel[1]), 'k'); redraw(); buttons(); status(); };
+  $('fb').onclick = () => { log(game.move(sel[0], sel[1])); redraw(); buttons(); status(); };
+  $('ub').onclick = () => { log(game.move(null)); redraw(); buttons(); status(); };
+  $('pb').onclick = () => {
+    $('pb').disabled = true;
+    setTimeout(() => {
+      const r = game.pass();
+      if (r === null) { finish(); return; }
+      log(r); redraw(); buttons(); status();
+    }, 20);
+  };
+  function finish() {
+    $('status').textContent = '一百年到了，在算"要是一道没围"……';
+    setTimeout(() => {
+      const lines = game.ending();
+      draw($('cv'), game.w, { seen: game.seen, title: game.year() + ' 年，你的', color: true });
+      $('cv0').style.display = 'block';
+      draw($('cv0'), game.w0, { title: game.year() + ' 年，要是一道没围', color: false });
+      $('status').textContent = '';
+      $('end').textContent = lines.join('\n') + '\n\n上面那张是你的，橙的是从你围栏里出来的那一支；下面那张是同一片荒原，一道没围。';
+      buttons();
+    }, 20);
+  }
+  setTimeout(() => {
+    game = new G.Game(seed);
+    log(['你是这片荒原上的人。山顶那几丛是老松。手里有一道围栏，围得住三十米见方一块，牛进不去。']);
+    redraw(); buttons(); status();
+  }, 10);
+})();
+</script>
+</body>
+</html>
