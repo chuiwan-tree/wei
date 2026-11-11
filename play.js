@@ -21,8 +21,8 @@
   const vis = (w) => w.live().filter(t => t.h >= L.HEATHER + 0.1);
   const tall = (w) => w.live().filter(t => t.h >= L.REACH);
 
-  function Game(seed) {
-    const w = new L.World(seed);
+  function Game(seed, map) {
+    const w = new L.World(seed, map);
     for (let i = 0; i < WARM; i++) w.step();
     w.look();
     this.w = w; this.turn = 0; this.kn = 0; this.seen = {}; this.met = []; this.start = w.dump(); this.done = false;
@@ -56,6 +56,12 @@
       out.push(s);
     }
     if (up.length) out.push('站着也看得见的：' + up.length + ' 棵。');
+    // 第 18 天 05:02 加：抬头看见的（只说看得见的样子，不讲规矩）。四个生人看不懂林子里没挨啃却一直矮着的苗
+    let cov = 0;
+    for (let x = x0; x < x0 + BS; x++) for (let y = y0; y < y0 + BS; y++) if (w.canopy.has(x * 1000 + y)) cov++;
+    if (cov >= 70) out.push('抬头看：这一块大半罩在树冠底下。');
+    else if (cov >= 30) out.push('抬头看：这一块有一片罩在树冠底下。');
+    else if (cov > 0) out.push('抬头看：边上有几棵的树冠伸过来。');
     for (const m of prev)
       out.push('以前在这儿见过的：' + (Y0 + m.yr - WARM) + ' 年那棵最老的，那时 ' + m.age + ' 岁、' + Math.round(m.h * 100) + ' 厘米，现在' + fate(w, m.id) + '。');
     this.kn += 1;

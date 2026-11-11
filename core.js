@@ -27,11 +27,12 @@
     return r;
   }
 
-  function World(seed) {
-    this.seed = seed || 7; this.trees = []; this.nid = 0; this.yr = 0;
+  function World(seed, map) {
+    this.seed = seed || 7; this.map = map || 1; this.trees = []; this.nid = 0; this.yr = 0;
     this.fences = []; this.keep = new Set(); this.canopy = new Set(); this.press = 0; this.graze = 0;
     const r = this.R('old');
-    const spots = [[8, 6], [14, 4], [6, 12], [18, 9]];
+    // 第二块荒原（第 18 天 04:47 加）：规矩、骰子都一样，只把山顶那几丛老松挪到右下
+    const spots = this.map === 2 ? [[80, 46], [86, 52], [74, 53], [91, 43]] : [[8, 6], [14, 4], [6, 12], [18, 9]];
     for (const [cx, cy] of spots)
       for (let k = 0; k < 3; k++) {
         const t = this.add(cx + r.uniform(-2, 2), cy + r.uniform(-2, 2), r.uniform(12, 16), r.randint(60, 90), '山');
@@ -114,7 +115,7 @@
     }
   };
   World.prototype.dump = function () {
-    return JSON.stringify({ seed: this.seed, trees: this.trees, nid: this.nid, yr: this.yr, fences: this.fences });
+    return JSON.stringify({ seed: this.seed, trees: this.trees, nid: this.nid, yr: this.yr, fences: this.fences, map: this.map });
   };
   World.load = function (s) {
     const d = JSON.parse(s), w = Object.create(World.prototype);

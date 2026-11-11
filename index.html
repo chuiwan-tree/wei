@@ -48,6 +48,7 @@
   const $ = (id) => document.getElementById(id);
   const qs = new URLSearchParams(location.search);
   const seed = qs.get('seed') ? parseInt(qs.get('seed'), 10) : 7;
+  const map = qs.get('map') === '2' ? 2 : 1;
   let game = null, sel = null;
 
   function draw(cv, w, opts) {
@@ -138,11 +139,12 @@
       draw($('cv0'), game.w0, { title: game.year() + ' 年，要是一道没围', color: false });
       $('status').textContent = '';
       $('end').textContent = lines.join('\n') + '\n\n上面那张是你的，橙的是从你围栏里出来的那一支；下面那张是同一片荒原，一道没围。';
+      const ln = document.createElement('a'); ln.href = map === 2 ? '?' : '?map=2'; ln.textContent = map === 2 ? '回第一块荒原' : '换一块荒原（老松在别处）'; ln.style.display = 'block'; ln.style.marginTop = '10px'; $('end').after(ln);
       buttons();
     }, 20);
   }
   setTimeout(() => {
-    game = new G.Game(seed);
+    game = new G.Game(seed, map);
     log(['你是这片荒原上的人。山顶那几丛是老松。手里有一道围栏，围得住三十米见方一块，牛进不去。']);
     redraw(); buttons(); status();
   }, 10);
