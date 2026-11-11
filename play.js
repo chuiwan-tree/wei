@@ -44,19 +44,20 @@
     const ts = w.live().filter(t => x0 <= t.x && t.x < x0 + BS && y0 <= t.y && t.y < y0 + BS);
     const low = ts.filter(t => t.h < L.HEATHER + 0.1), up = ts.filter(t => t.h >= L.HEATHER + 0.1);
     const prev = this.met.filter(m => m.c === c && m.r === r);
-    for (const m of prev)
-      out.push((Y0 + m.yr - WARM) + ' 年在这儿见过的那棵最老的，那时 ' + m.age + ' 岁、' + Math.round(m.h * 100) + ' 厘米：' + fate(w, m.id) + '。');
-    let s, old = null;
-    if (!low.length) s = '你在 ' + name(c, r) + ' 蹲下去，扒开石南看。底下没有松苗。';
+    let old = null;
+    out.push('你在 ' + name(c, r) + ' 蹲下去，扒开石南看。');
+    if (!low.length) out.push('底下：没有松苗。');
     else {
       old = low.reduce((a, b) => (b.age > a.age ? b : a));
-      s = '你在 ' + name(c, r) + ' 蹲下去，扒开石南看。底下有 ' + low.length + ' 棵小松，都不到石南高。最老的一棵 ' + old.age +
+      let s = '底下：' + low.length + ' 棵小松，都不到石南高。最老的一棵 ' + old.age +
         ' 岁，' + Math.round(old.h * 100) + ' 厘米高，顶上被啃秃了 ' + old.bit + ' 回。';
       const young = low.filter(t => t.age <= 2).length;
       if (young) s += '有 ' + young + ' 棵是这一两年才出的。';
+      out.push(s);
     }
-    if (up.length) s += '（站着也看得见的有 ' + up.length + ' 棵。）';
-    out.push(s);
+    if (up.length) out.push('站着也看得见的：' + up.length + ' 棵。');
+    for (const m of prev)
+      out.push('以前在这儿见过的：' + (Y0 + m.yr - WARM) + ' 年那棵最老的，那时 ' + m.age + ' 岁、' + Math.round(m.h * 100) + ' 厘米，现在' + fate(w, m.id) + '。');
     this.kn += 1;
     this.seen[c + ',' + r] = { n: low.length, yr: w.yr };
     if (old && !this.met.some(m => m.id === old.id)) {
@@ -82,12 +83,16 @@
     this.turn += 1; this.kn = 0;
     if (this.turn >= TURNS) { this.done = true; return null; }
     const now = vis(w), nw = now.filter(t => !before.has(t.id)), out = [this.head()];
+    const nowIds = new Set(now.map(t => t.id));
+    let gone = 0, back = 0;
+    for (const t of w.trees) if (before.has(t.id) && !nowIds.has(t.id)) { if (t.dead != null) gone++; else back++; }
     if (nw.length) {
       const bl = new Map();
       for (const t of nw) { const k = name(Math.floor(t.x / BS), Math.floor(t.y / BS)); bl.set(k, (bl.get(k) || 0) + 1); }
       const top = [...bl.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
       out.push('这五年新冒出石南的：' + top.map(([k, v]) => k + ' ' + v + ' 棵').join('、') + (bl.size > 3 ? '……' : ''));
     }
+    if (gone || back) out.push('五年前站着看得见的，' + (gone ? '有 ' + gone + ' 棵没了' : '') + (gone && back ? '，' : '') + (back ? '有 ' + back + ' 棵又被啃回石南里' : '') + '。');
     const f = this.fence();
     if (f) {
       const fc = f[0] / BS, fr = f[1] / BS;

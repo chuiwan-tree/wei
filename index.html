@@ -27,7 +27,7 @@
   <p class="intro">这是一片荒原，过一百年。山顶那几丛是老松。你手里有一道围栏，围得住三十米见方一块，牛进不去。<br>
   先在图上点一块地，再选蹲下去看，或者把围栏挪过去。每五年最多蹲三回。</p>
   <canvas id="cv" width="830" height="540"></canvas>
-  <div class="cap">紫的是石南。白框是立着的围栏，淡框是拆了的。黄字是你蹲下去那年看见的数。</div>
+  <div class="cap">紫的是石南。白框是立着的围栏，淡框是拆了的。黄字是你蹲下去那年看见的数，十年以前的淡下去。</div>
   <div id="bar">
     <span id="pick">点一块地。</span>
     <button id="kb" disabled>蹲下去看</button>
@@ -80,10 +80,10 @@
     }
     if (opts.seen) {
       for (const k in opts.seen) {
-        const [c, r] = k.split(',').map(Number), v = opts.seen[k];
-        ctx.fillStyle = 'rgb(255,245,160)'; ctx.font = '13px sans-serif';
+        const [c, r] = k.split(',').map(Number), v = opts.seen[k], stale = w.yr - v.yr > 10;
+        ctx.fillStyle = stale ? 'rgba(255,245,160,0.45)' : 'rgb(255,245,160)'; ctx.font = '13px sans-serif';
         ctx.fillText(v.n + '棵', OX + c * G.BS * S + 4, TOP + r * G.BS * S + 15);
-        ctx.fillStyle = 'rgb(230,220,190)'; ctx.font = '11px sans-serif';
+        ctx.fillStyle = stale ? 'rgba(230,220,190,0.45)' : 'rgb(230,220,190)'; ctx.font = '11px sans-serif';
         ctx.fillText((G.Y0 + v.yr - G.WARM) + '年', OX + c * G.BS * S + 4, TOP + r * G.BS * S + 29);
       }
     }
